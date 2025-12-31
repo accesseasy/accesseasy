@@ -81,7 +81,9 @@
       text-align: center;
     }
 
-    .cta button {
+    /* Button and link styles for the call-to-action */
+    .cta button,
+    .cta .button {
       background: var(--accent);
       color: #000;
       border: none;
@@ -90,9 +92,12 @@
       border-radius: 6px;
       cursor: pointer;
       font-weight: 600;
+      text-decoration: none;
+      display: inline-block;
     }
 
-    .cta button:hover {
+    .cta button:hover,
+    .cta .button:hover {
       opacity: 0.9;
     }
 
@@ -167,9 +172,9 @@
     </section>
 
     <div class="cta">
-      <button disabled>
+      <a id="host-dashboard" class="button" href="/dashboard">
         Host Dashboard (Coming Soon)
-      </button>
+      </a>
       <div class="disclaimer">
         This platform does not issue tickets and does not hold user funds.
         Smart contract settlement occurs directly on the Solana blockchain.
