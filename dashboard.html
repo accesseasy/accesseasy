@@ -114,10 +114,11 @@
         <button class="secondary" type="button" id="reset">Reset</button>
       </div>
     </form>
+
+    <div id="save-status" class="small" aria-live="polite" style="margin-top:0.75rem"></div>
   </div>
 
   <script>
-    // Make asset buttons toggle active state and set a hidden input
     (function(){
       const buttons = document.querySelectorAll('.asset-buttons button');
       let selectedAsset = null;
@@ -130,21 +131,49 @@
         });
       });
 
-      // simple form handling (no backend)
       const form = document.getElementById('event-form');
-      form.addEventListener('submit', (e) => {
+      const status = document.getElementById('save-status');
+
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        status.textContent = '';
         const data = new FormData(form);
         const obj = {};
         for (const [k,v] of data.entries()) obj[k]=v;
         obj.asset = selectedAsset;
-        alert('Event saved (local preview)\n' + JSON.stringify(obj, null, 2));
+
+        // basic validation
+        if (!obj.address || !obj.tickets || !obj.price) {
+          status.textContent = 'Please fill at least Address, Number of Tickets and Price amount.';
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(obj)
+          });
+
+          const json = await res.json();
+          if (res.ok) {
+            status.textContent = 'Event saved to events.json (server demo). ID: ' + json.event.id;
+            form.reset();
+            buttons.forEach(b=>b.classList.remove('active'));
+            selectedAsset = null;
+          } else {
+            status.textContent = 'Save failed: ' + (json.error || res.statusText);
+          }
+        } catch (err) {
+          status.textContent = 'Network or server error: ' + err.message;
+        }
       });
 
       document.getElementById('reset').addEventListener('click', () => {
         form.reset();
-        buttons.forEach(b => b.classList.remove('active'));
+        buttons.forEach(b=>b.classList.remove('active'));
         selectedAsset = null;
+        document.getElementById('save-status').textContent = '';
       });
     })();
   </script>
