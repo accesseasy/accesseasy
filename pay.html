@@ -21,6 +21,9 @@ body { background:#0b0f14;color:#e5e7eb;font-family:system-ui;text-align:center;
 <script>
 const FEE_WALLET = "UkG6htp8SmC4ukEVGXFbhngiKo86cquYupKha36FfFE";
 const SOL_FEE = 0.1; // example, dynamic later
+// Set TOKEN_MINT to the SPL token mint if you want to charge in a token instead of SOL.
+// Replace the placeholder below with the actual token mint address when ready.
+const TOKEN_MINT = "<TOKEN_MINT_ADDRESS>";
 
 async function getSolPrice() {
   const r = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
@@ -34,8 +37,7 @@ async function getSolPrice() {
   document.getElementById("price").textContent =
     `Fee: ${SOL_FEE} SOL (~$${usd})`;
 
-  const solanaPayURL =
-    `solana:${FEE_WALLET}?amount=${SOL_FEE}&label=Event%20Ticket%20Fee`;
+  const solanaPayURL = `solana:${FEE_WALLET}?amount=${SOL_FEE}&spl-token=${TOKEN_MINT}`;
 
   new QRCode(document.getElementById("qr"), solanaPayURL);
 })();
