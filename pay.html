@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pay Ticket Fees</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+<style>
+body { background:#0b0f14;color:#e5e7eb;font-family:system-ui;text-align:center;padding:2rem }
+#qr { margin:2rem auto }
+</style>
+</head>
+
+<body>
+
+<h2>Complete Payment</h2>
+<p>Scan QR with Phantom / Solflare</p>
+
+<div id="price">Loading price…</div>
+<div id="qr"></div>
+
+<script>
+const FEE_WALLET = "UkG6htp8SmC4ukEVGXFbhngiKo86cquYupKha36FfFE";
+const SOL_FEE = 0.1; // example, dynamic later
+
+async function getSolPrice() {
+  const r = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
+  const j = await r.json();
+  return j.solana.usd;
+}
+
+(async () => {
+  const price = await getSolPrice();
+  const usd = (SOL_FEE * price).toFixed(2);
+  document.getElementById("price").textContent =
+    `Fee: ${SOL_FEE} SOL (~$${usd})`;
+
+  const solanaPayURL =
+    `solana:${FEE_WALLET}?amount=${SOL_FEE}&label=Event%20Ticket%20Fee`;
+
+  new QRCode(document.getElementById("qr"), solanaPayURL);
+})();
+</script>
+
+</body>
+</html>
