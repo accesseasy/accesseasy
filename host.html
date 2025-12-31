@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Event – Host</title>
+<style>
+body { background:#0b0f14;color:#e5e7eb;font-family:system-ui;padding:2rem }
+form { max-width:600px;margin:auto;background:#121826;padding:2rem;border-radius:10px }
+label { display:block;margin-top:1rem;font-weight:600 }
+input,select { width:100%;padding:0.6rem;margin-top:0.4rem;border-radius:6px;border:none }
+button { margin-top:1.5rem;padding:0.8rem;width:100%;background:#f7931a;border:none;font-weight:700 }
+small { color:#9ca3af }
+</style>
+</head>
+
+<body>
+
+<h2>Create Event Ticket Batch</h2>
+
+<form id="eventForm">
+  <label>Event Name</label>
+  <input required>
+
+  <label>Event Date</label>
+  <input type="date" required>
+
+  <label>Event Location</label>
+  <input placeholder="City, Country" required>
+
+  <label>Ticket Amount</label>
+  <select id="ticketAmount">
+    <option value="100">100 tickets</option>
+    <option value="250">250 tickets</option>
+    <option value="500">500 tickets</option>
+  </select>
+
+  <label>Region</label>
+  <select id="region">
+    <option value="americas">North / Central / South America</option>
+    <option value="world">Rest of World</option>
+  </select>
+
+  <label>Payment Asset</label>
+  <select id="asset"></select>
+
+  <small id="feeInfo"></small>
+
+  <button type="submit">Proceed to Payment</button>
+</form>
+
+<script>
+const assetSelect = document.getElementById("asset");
+const feeInfo = document.getElementById("feeInfo");
+
+function updateAssets() {
+  assetSelect.innerHTML = "";
+  if (region.value === "americas") {
+    assetSelect.innerHTML += `<option>DESPERADO</option><option>USDC</option>`;
+  } else {
+    assetSelect.innerHTML += `<option>NWO</option><option>EURC</option>`;
+  }
+}
+
+function updateFee() {
+  const tickets = ticketAmount.value;
+  const asset = assetSelect.value;
+  const fees = {
+    100: { stable:0.1, utility:0.049 },
+    250: { stable:0.2, utility:0.096 },
+    500: { stable:0.35, utility:0.15 }
+  };
+  const type = (asset === "USDC" || asset === "EURC") ? "stable" : "utility";
+  feeInfo.textContent = `Fee: ${fees[tickets][type]} SOL equivalent`;
+}
+
+region.onchange = () => { updateAssets(); updateFee(); };
+ticketAmount.onchange = updateFee;
+assetSelect.onchange = updateFee;
+
+updateAssets();
+updateFee();
+
+document.getElementById("eventForm").onsubmit = e => {
+  e.preventDefault();
+  window.location.href = "pay.html";
+};
+</script>
+
+</body>
+</html>
