@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Host Dashboard — Decentralized Event Payments</title>
+  <style>
+    :root{--bg:#0b0f14;--card:#121826;--accent:#f7931a;--text:#e5e7eb;--muted:#9ca3af;--border:#1f2937}
+    *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu}
+    body{background:var(--bg);color:var(--text);min-height:100vh;padding:3rem}
+    .container{max-width:980px;margin:0 auto}
+    h1{font-size:1.6rem;margin-bottom:0.5rem}
+    p.lead{color:var(--muted);margin-bottom:1.5rem}
+    .dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
+    .card{background:var(--card);border:1px solid var(--border);padding:1rem;border-radius:10px}
+    .card h2{font-size:1.05rem;margin-bottom:0.75rem}
+    label{display:block;font-size:0.9rem;margin-bottom:0.35rem;color:var(--muted)}
+    input[type="text"], input[type="time"], textarea, select{width:100%;padding:0.5rem;border-radius:6px;border:1px solid #26303a;background:#0f1418;color:var(--text)}
+    textarea{min-height:100px;resize:vertical}
+    .ticket-options{display:flex;flex-wrap:wrap;gap:0.5rem}
+    .ticket-options label{background:#0f1418;padding:0.45rem 0.65rem;border-radius:6px;border:1px solid #26303a;cursor:pointer}
+    .ticket-options input{display:none}
+    .ticket-options input:checked+span{background:var(--accent);color:#000;padding:0.45rem 0.65rem;border-radius:6px}
+    .asset-buttons{display:flex;gap:0.5rem;flex-wrap:wrap}
+    .asset-buttons button{background:#0f1418;color:var(--text);border:1px solid #26303a;padding:0.5rem 0.75rem;border-radius:6px;cursor:pointer}
+    .asset-buttons button.active{background:var(--accent);color:#000}
+    .actions{margin-top:1rem;display:flex;gap:0.5rem}
+    .actions button.primary{background:var(--accent);color:#000;border:none;padding:0.6rem 1rem;border-radius:6px;cursor:pointer}
+    .actions button.secondary{background:transparent;border:1px solid #26303a;color:var(--muted);padding:0.6rem 1rem;border-radius:6px;cursor:pointer}
+    .small{font-size:0.85rem;color:var(--muted);margin-top:0.5rem}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Host Dashboard</h1>
+    <p class="lead">Create and configure your event. All fields are displayed in English.</p>
+
+    <form id="event-form">
+      <div class="dashboard-grid">
+
+        <section class="card" aria-labelledby="location-heading">
+          <h2 id="location-heading">Location</h2>
+
+          <label for="address">Address</label>
+          <input type="text" id="address" name="address" placeholder="123 Main St" />
+
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" placeholder="Berlin" />
+
+          <label for="postal">Postal Code</label>
+          <input type="text" id="postal" name="postal" placeholder="10115" />
+
+          <label for="time">Time</label>
+          <input type="time" id="time" name="time" />
+
+          <label for="description">Event Description</label>
+          <textarea id="description" name="description" placeholder="Short description of your event"></textarea>
+        </section>
+
+        <section class="card" aria-labelledby="tickets-heading">
+          <h2 id="tickets-heading">Number of Tickets</h2>
+
+          <div class="ticket-options" role="radiogroup" aria-label="Ticket quantities">
+            <label>
+              <input type="radio" name="tickets" value="100" />
+              <span>100 Tickets</span>
+            </label>
+            <label>
+              <input type="radio" name="tickets" value="250" />
+              <span>250 Tickets</span>
+            </label>
+            <label>
+              <input type="radio" name="tickets" value="500" />
+              <span>500 Tickets</span>
+            </label>
+            <label>
+              <input type="radio" name="tickets" value="1000" />
+              <span>1000 Tickets</span>
+            </label>
+            <label>
+              <input type="radio" name="tickets" value="2500" />
+              <span>2500 Tickets</span>
+            </label>
+            <label>
+              <input type="radio" name="tickets" value="10000" />
+              <span>10000 Tickets</span>
+            </label>
+          </div>
+
+          <div class="small">Choose the total number of tickets you will mint for this event.</div>
+        </section>
+
+        <section class="card" aria-labelledby="price-heading">
+          <h2 id="price-heading">Price</h2>
+
+          <label>Payment Asset</label>
+          <div class="asset-buttons" role="group" aria-label="Payment assets">
+            <button type="button" data-asset="USDC">USDC</button>
+            <button type="button" data-asset="EURC">EURC</button>
+            <button type="button" data-asset="NWO">NWO</button>
+            <button type="button" data-asset="DESPERADO">DESPERADO</button>
+          </div>
+
+          <label for="price-amount">Price amount</label>
+          <input type="text" id="price-amount" name="price" placeholder="e.g. 20.00" />
+
+          <div class="small">Select the asset and enter the ticket price. Supported assets are shown above.</div>
+        </section>
+
+      </div>
+
+      <div style="margin-top:1rem;display:flex;gap:0.5rem">
+        <button class="primary" type="submit">Save Event</button>
+        <button class="secondary" type="button" id="reset">Reset</button>
+      </div>
+    </form>
+
+    <div id="save-status" class="small" aria-live="polite" style="margin-top:0.75rem"></div>
+  </div>
+
+  <script>
+    (function(){
+      const buttons = document.querySelectorAll('.asset-buttons button');
+      let selectedAsset = null;
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          buttons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          selectedAsset = btn.dataset.asset;
+        });
+      });
+
+      const form = document.getElementById('event-form');
+      const status = document.getElementById('save-status');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        status.textContent = '';
+        const data = new FormData(form);
+        const obj = {};
+        for (const [k,v] of data.entries()) obj[k]=v;
+        obj.asset = selectedAsset;
+
+        // basic validation
+        if (!obj.address || !obj.tickets || !obj.price) {
+          status.textContent = 'Please fill at least Address, Number of Tickets and Price amount.';
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(obj)
+          });
+
+          const json = await res.json();
+          if (res.ok) {
+            status.textContent = 'Event saved to events.json (server demo). ID: ' + json.event.id;
+            form.reset();
+            buttons.forEach(b=>b.classList.remove('active'));
+            selectedAsset = null;
+          } else {
+            status.textContent = 'Save failed: ' + (json.error || res.statusText);
+          }
+        } catch (err) {
+          status.textContent = 'Network or server error: ' + err.message;
+        }
+      });
+
+      document.getElementById('reset').addEventListener('click', () => {
+        form.reset();
+        buttons.forEach(b=>b.classList.remove('active'));
+        selectedAsset = null;
+        document.getElementById('save-status').textContent = '';
+      });
+    })();
+  </script>
+</body>
+</html>
