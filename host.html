@@ -6,10 +6,18 @@
 <title>Create Event – Host</title>
 <style>
 body { background:#0b0f14;color:#e5e7eb;font-family:system-ui;padding:2rem }
-form { max-width:600px;margin:auto;background:#121826;padding:2rem;border-radius:10px }
+form { max-width:760px;margin:auto;background:#121826;padding:2rem;border-radius:10px }
 label { display:block;margin-top:1rem;font-weight:600 }
-input,select { width:100%;padding:0.6rem;margin-top:0.4rem;border-radius:6px;border:none }
-button { margin-top:1.5rem;padding:0.8rem;width:100%;background:#f7931a;border:none;font-weight:700 }
+input,select,button,textarea { width:100%;padding:0.6rem;margin-top:0.4rem;border-radius:6px;border:none;box-sizing:border-box }
+.row { display:flex;gap:1rem }
+.row > * { flex:1 }
+.tier { background:#0f1720;padding:1rem;border-radius:8px;margin-top:1rem;position:relative }
+.tier .remove { position:absolute;right:0.6rem;top:0.6rem;background:#7f1d1d;color:#fff;padding:0.2rem 0.5rem;border-radius:6px;border:none;cursor:pointer }
+.small { font-size:0.9rem }
+button.primary { margin-top:1.5rem;padding:0.8rem;width:100%;background:#f7931a;border:none;font-weight:700 }
+.actions { display:flex;gap:1rem;margin-top:0.5rem }
+.addTier { background:#1f2937;color:#fff;padding:0.6rem;border-radius:8px;border:none;cursor:pointer }
+.summary { margin-top:1rem;padding:0.8rem;border-radius:8px;background:#0b1220 }
 small { color:#9ca3af }
 </style>
 </head>
@@ -20,69 +28,241 @@ small { color:#9ca3af }
 
 <form id="eventForm">
   <label>Event Name</label>
-  <input required>
+  <input id="eventName" required>
 
-  <label>Event Date</label>
-  <input type="date" required>
+  <div class="row">
+    <div>
+      <label>Event Date</label>
+      <input id="eventDate" type="date" required>
+    </div>
+    <div>
+      <label>Region</label>
+      <select id="region">
+        <option value="americas">North / Central / South America</option>
+        <option value="world">Rest of World</option>
+      </select>
+    </div>
+  </div>
 
   <label>Event Location</label>
-  <input placeholder="City, Country" required>
+  <input id="eventLocation" placeholder="City, Country" required>
 
-  <label>Ticket Amount</label>
-  <select id="ticketAmount">
-    <option value="100">100 tickets</option>
-    <option value="250">250 tickets</option>
-    <option value="500">500 tickets</option>
-  </select>
+  <label>Ticket Tiers</label>
+  <div id="tiers"></div>
 
-  <label>Region</label>
-  <select id="region">
-    <option value="americas">North / Central / South America</option>
-    <option value="world">Rest of World</option>
-  </select>
+  <div class="actions">
+    <button type="button" class="addTier" id="addTierBtn">+ Add Ticket Tier</button>
+    <button type="button" class="addTier" id="resetTiersBtn">Reset to 1 Tier</button>
+  </div>
 
   <label>Payment Asset</label>
   <select id="asset"></select>
 
-  <small id="feeInfo"></small>
+  <small id="feeInfo" class="small"></small>
 
-  <button type="submit">Proceed to Payment</button>
+  <div class="summary" id="totals">
+    <div id="totalTickets">Total tickets: 0</div>
+    <div id="totalPrice">Total price (asset): 0</div>
+    <div id="totalFee">Estimated fee (SOL equivalent): 0</div>
+  </div>
+
+  <button type="submit" class="primary">Proceed to Payment</button>
 </form>
 
 <script>
-const assetSelect = document.getElementById("asset");
-const feeInfo = document.getElementById("feeInfo");
+/*
+  Dynamic ticket configuration + token selection & pricing.
+  - Multiple ticket tiers (add/remove)
+  - Assets depend on region
+  - Fee calculation uses the original fee brackets:
+      100 => { stable:0.1, utility:0.049 }
+      250 => { stable:0.2, utility:0.096 }
+      500 => { stable:0.35, utility:0.15 }
+    These values are interpreted as SOL-equivalent fee per ticket for the selected bracket.
+  - Fee bracket is chosen by total tickets:
+      total <= 100 -> 100 bracket
+      total <= 250 -> 250 bracket
+      else -> 500 bracket
+  - On submit the compiled event payload is saved to sessionStorage as 'pendingEvent' and user is redirected to pay.html
+*/
+
+const region = document.getElementById('region');
+const assetSelect = document.getElementById('asset');
+const tiersContainer = document.getElementById('tiers');
+const feeInfo = document.getElementById('feeInfo');
+const totalTicketsEl = document.getElementById('totalTickets');
+const totalPriceEl = document.getElementById('totalPrice');
+const totalFeeEl = document.getElementById('totalFee');
+const addTierBtn = document.getElementById('addTierBtn');
+const resetTiersBtn = document.getElementById('resetTiersBtn');
+
+const fees = {
+  100: { stable:0.1, utility:0.049 },
+  250: { stable:0.2, utility:0.096 },
+  500: { stable:0.35, utility:0.15 }
+};
 
 function updateAssets() {
   assetSelect.innerHTML = "";
   if (region.value === "americas") {
-    assetSelect.innerHTML += `<option>DESPERADO</option><option>USDC</option>`;
+    assetSelect.innerHTML += `<option value="DESPERADO">DESPERADO</option><option value="USDC">USDC</option>`;
   } else {
-    assetSelect.innerHTML += `<option>NWO</option><option>EURC</option>`;
+    assetSelect.innerHTML += `<option value="NWO">NWO</option><option value="EURC">EURC</option>`;
   }
 }
 
-function updateFee() {
-  const tickets = ticketAmount.value;
-  const asset = assetSelect.value;
-  const fees = {
-    100: { stable:0.1, utility:0.049 },
-    250: { stable:0.2, utility:0.096 },
-    500: { stable:0.35, utility:0.15 }
-  };
-  const type = (asset === "USDC" || asset === "EURC") ? "stable" : "utility";
-  feeInfo.textContent = `Fee: ${fees[tickets][type]} SOL equivalent`;
+// bracket selection by total tickets
+function bracketFor(total) {
+  if (total <= 100) return 100;
+  if (total <= 250) return 250;
+  return 500;
 }
 
+function assetType(asset) {
+  return (asset === "USDC" || asset === "EURC") ? "stable" : "utility";
+}
+
+function createTier(defaults = {}) {
+  const idx = Date.now().toString(36) + Math.floor(Math.random()*1000);
+  const wrapper = document.createElement('div');
+  wrapper.className = 'tier';
+  wrapper.dataset.id = idx;
+
+  wrapper.innerHTML = `
+    <button type="button" class="remove small">Remove</button>
+    <label>Tier Name</label>
+    <input class="tier-name" placeholder="e.g. General, VIP" value="${defaults.name || 'General'}">
+    <div class="row">
+      <div>
+        <label>Quantity</label>
+        <select class="tier-qty">
+          <option value="1">1 ticket</option>
+          <option value="10">10 tickets</option>
+          <option value="25">25 tickets</option>
+          <option value="50">50 tickets</option>
+          <option value="100">100 tickets</option>
+        </select>
+      </div>
+      <div>
+        <label>Price per ticket</label>
+        <input class="tier-price" type="number" min="0" step="any" value="${defaults.price || 0}">
+      </div>
+    </div>
+  `;
+
+  // set default qty if provided
+  if (defaults.qty) {
+    const sel = wrapper.querySelector('.tier-qty');
+    // clamp to one of the available options; if not present, set as custom via input
+    let found = false;
+    for (const opt of sel.options) {
+      if (opt.value === String(defaults.qty)) { opt.selected = true; found = true; break; }
+    }
+    if (!found) {
+      // add custom quantity option at top
+      const customOpt = document.createElement('option');
+      customOpt.value = defaults.qty;
+      customOpt.text = `${defaults.qty} tickets`;
+      sel.prepend(customOpt);
+      sel.value = defaults.qty;
+    }
+  }
+
+  // remove handler
+  wrapper.querySelector('.remove').onclick = () => {
+    wrapper.remove();
+    updateFee();
+  };
+
+  // change handlers
+  wrapper.querySelector('.tier-qty').onchange = updateFee;
+  wrapper.querySelector('.tier-price').oninput = updateFee;
+  wrapper.querySelector('.tier-name').oninput = updateFee;
+
+  tiersContainer.appendChild(wrapper);
+  return wrapper;
+}
+
+function clearTiers() {
+  tiersContainer.innerHTML = "";
+}
+
+function resetToSingleTier() {
+  clearTiers();
+  createTier({ name: 'General', qty: 100, price: 0 });
+  updateFee();
+}
+
+function gatherTiers() {
+  const tiers = [];
+  const nodes = tiersContainer.querySelectorAll('.tier');
+  nodes.forEach(node => {
+    const name = node.querySelector('.tier-name').value || 'Tier';
+    const qty = Number(node.querySelector('.tier-qty').value) || 0;
+    const price = Number(node.querySelector('.tier-price').value) || 0;
+    tiers.push({ name, qty, price });
+  });
+  return tiers;
+}
+
+function updateFee() {
+  const tiers = gatherTiers();
+  const totalTickets = tiers.reduce((s,t)=>s + (t.qty||0), 0);
+  const totalPrice = tiers.reduce((s,t)=>s + (t.qty * t.price), 0);
+  const bracket = bracketFor(totalTickets || 0 || 1);
+  const asset = assetSelect.value;
+  const type = assetType(asset);
+  const feePerTicket = fees[bracket][type];
+
+  // fee interpreted as SOL-equivalent per ticket (same interpretation as original file)
+  const totalFeeSOL = feePerTicket * totalTickets;
+
+  feeInfo.textContent = `Bracket: ${bracket} tickets — Fee per ticket: ${feePerTicket} SOL equivalent (${type}).`;
+  totalTicketsEl.textContent = `Total tickets: ${totalTickets}`;
+  totalPriceEl.textContent = `Total price (${asset}): ${totalPrice || 0}`;
+  totalFeeEl.textContent = `Estimated fee (SOL equivalent): ${totalFeeSOL.toFixed(6)}`;
+
+  return {
+    totalTickets, totalPrice, feePerTicket, totalFeeSOL, bracket, type
+  };
+}
+
+// initial setup
 region.onchange = () => { updateAssets(); updateFee(); };
-ticketAmount.onchange = updateFee;
 assetSelect.onchange = updateFee;
+addTierBtn.onclick = () => { createTier({ name: 'New Tier', qty: 10, price: 0 }); updateFee(); };
+resetTiersBtn.onclick = resetToSingleTier;
 
+// populate initial data
 updateAssets();
-updateFee();
+resetToSingleTier();
 
+// ensure fee updates if something else changes externally
+document.getElementById('eventName').oninput = updateFee;
+document.getElementById('eventDate').onchange = updateFee;
+document.getElementById('eventLocation').oninput = updateFee;
+
+// form submit: save payload to sessionStorage and redirect to pay.html
 document.getElementById("eventForm").onsubmit = e => {
   e.preventDefault();
+  const eventPayload = {
+    name: document.getElementById('eventName').value,
+    date: document.getElementById('eventDate').value,
+    location: document.getElementById('eventLocation').value,
+    region: region.value,
+    asset: assetSelect.value,
+    tiers: gatherTiers(),
+    feeSummary: updateFee()
+  };
+
+  // Save to sessionStorage so pay.html can read it (avoids long query strings)
+  try {
+    sessionStorage.setItem('pendingEvent', JSON.stringify(eventPayload));
+  } catch (err) {
+    console.warn('Could not save to sessionStorage', err);
+  }
+
+  // Redirect to payment page
   window.location.href = "pay.html";
 };
 </script>
