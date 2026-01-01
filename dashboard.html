@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Host Dashboard — Decentralized Event Payments</title>
+  <title>Host Dashboard — accesseasy</title>
+
   <style>
     :root{--bg:#0b0f14;--card:#121826;--accent:#f7931a;--text:#e5e7eb;--muted:#9ca3af;--border:#1f2937}
     *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu}
@@ -28,6 +29,10 @@
     .actions button.primary{background:var(--accent);color:#000;border:none;padding:0.6rem 1rem;border-radius:6px;cursor:pointer}
     .actions button.secondary{background:transparent;border:1px solid #26303a;color:var(--muted);padding:0.6rem 1rem;border-radius:6px;cursor:pointer}
     .small{font-size:0.85rem;color:var(--muted);margin-top:0.5rem}
+    .fees-box{background:#0e1620;border:1px solid #26303a;padding:0.8rem;border-radius:8px}
+    .fees-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,0.02)}
+    .fees-row strong{color:var(--text)}
+    .center{display:flex;align-items:center;gap:8px}
   </style>
 </head>
 <body>
@@ -38,60 +43,40 @@
     <form id="event-form">
       <div class="dashboard-grid">
 
+        <!-- Location Card -->
         <section class="card" aria-labelledby="location-heading">
           <h2 id="location-heading">Location</h2>
-
           <label for="address">Address</label>
           <input type="text" id="address" name="address" placeholder="123 Main St" />
-
           <label for="city">City</label>
           <input type="text" id="city" name="city" placeholder="Berlin" />
-
           <label for="postal">Postal Code</label>
           <input type="text" id="postal" name="postal" placeholder="10115" />
-
           <label for="time">Time</label>
           <input type="time" id="time" name="time" />
-
           <label for="description">Event Description</label>
           <textarea id="description" name="description" placeholder="Short description of your event"></textarea>
         </section>
 
+        <!-- Number of Tickets Card -->
         <section class="card" aria-labelledby="tickets-heading">
           <h2 id="tickets-heading">Number of Tickets</h2>
 
           <div class="ticket-options" role="radiogroup" aria-label="Ticket quantities">
-            <label>
-              <input type="radio" name="tickets" value="100" />
-              <span>100 Tickets</span>
-            </label>
-            <label>
-              <input type="radio" name="tickets" value="250" />
-              <span>250 Tickets</span>
-            </label>
-            <label>
-              <input type="radio" name="tickets" value="500" />
-              <span>500 Tickets</span>
-            </label>
-            <label>
-              <input type="radio" name="tickets" value="1000" />
-              <span>1000 Tickets</span>
-            </label>
-            <label>
-              <input type="radio" name="tickets" value="2500" />
-              <span>2500 Tickets</span>
-            </label>
-            <label>
-              <input type="radio" name="tickets" value="10000" />
-              <span>10000 Tickets</span>
-            </label>
+            <label><input type="radio" name="tickets" value="100" /><span>100 Tickets</span></label>
+            <label><input type="radio" name="tickets" value="250" /><span>250 Tickets</span></label>
+            <label><input type="radio" name="tickets" value="500" /><span>500 Tickets</span></label>
+            <label><input type="radio" name="tickets" value="1000" /><span>1000 Tickets</span></label>
+            <label><input type="radio" name="tickets" value="2500" /><span>2500 Tickets</span></label>
+            <label><input type="radio" name="tickets" value="10000" /><span>10000 Tickets</span></label>
           </div>
 
-          <div class="small">Choose the total number of tickets you will mint for this event.</div>
+          <div class="small" style="margin-top:8px">Choose the total number of tickets you will mint for this event.</div>
         </section>
 
+        <!-- Price & Fees Card -->
         <section class="card" aria-labelledby="price-heading">
-          <h2 id="price-heading">Price</h2>
+          <h2 id="price-heading">Price & Fees</h2>
 
           <label>Payment Asset</label>
           <div class="asset-buttons" role="group" aria-label="Payment assets">
@@ -101,79 +86,243 @@
             <button type="button" data-asset="DESPERADO">DESPERADO</button>
           </div>
 
-          <label for="price-amount">Price amount</label>
-          <input type="text" id="price-amount" name="price" placeholder="e.g. 20.00" />
+          <label for="price-amount" style="margin-top:0.75rem">Price amount</label>
+          <input type="text" id="price-amount" name="price" placeholder="e.g. 20.00" inputmode="decimal" />
 
-          <div class="small">Select the asset and enter the ticket price. Supported assets are shown above.</div>
+          <div class="small" style="margin-top:0.75rem">Select the asset and enter the ticket price. Supported assets are shown above.</div>
+
+          <hr style="border-color:rgba(255,255,255,0.03);margin:12px 0"/>
+
+          <div>
+            <label for="network">Network</label>
+            <select id="network" style="margin-top:6px">
+              <option value="devnet" selected>Devnet (test)</option>
+              <option value="mainnet">Mainnet (real SOL)</option>
+            </select>
+          </div>
+
+          <div style="margin-top:12px" class="fees-box" aria-live="polite">
+            <div style="font-weight:700;margin-bottom:6px">Fees (selected ticket quantity)</div>
+            <div id="fees-content">
+              <div class="fees-row"><div>Platform Fee</div><div id="platform-fee">—</div></div>
+              <div class="fees-row"><div>Service Fee</div><div id="service-fee">—</div></div>
+              <div class="fees-row"><div>Total Fee</div><div id="total-fee">—</div></div>
+            </div>
+
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+              <button type="button" id="connect-wallet" class="primary">Connect Wallet</button>
+              <button type="button" id="pay-fees" class="primary" disabled>Pay Fees</button>
+              <div class="small" id="wallet-status" style="margin-left:8px">Not connected</div>
+            </div>
+
+            <div class="small" style="margin-top:8px;color:var(--muted)">
+              Receiver address: <code style="color:#fff">UkG6htp8SmC4ukEVGXFbhngiKo86cquYupKha36FfFE</code>
+            </div>
+
+            <div id="tx-status" class="small" style="margin-top:8px"></div>
+          </div>
         </section>
 
       </div>
 
-      <div style="margin-top:1rem;display:flex;gap:0.5rem">
+      <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap">
         <button class="primary" type="submit">Save Event</button>
         <button class="secondary" type="button" id="reset">Reset</button>
       </div>
     </form>
-
-    <div id="save-status" class="small" aria-live="polite" style="margin-top:0.75rem"></div>
   </div>
 
-  <script>
-    (function(){
-      const buttons = document.querySelectorAll('.asset-buttons button');
-      let selectedAsset = null;
+  <!-- Solana web3 (IIFE build) -->
+  <script src="https://unpkg.com/@solana/web3.js@1.73.0/lib/index.iife.js"></script>
 
-      buttons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          buttons.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          selectedAsset = btn.dataset.asset;
-        });
+  <script>
+    (function () {
+      // Fee matrix (ticketCount => [platformFeeSOL, serviceFeeSOL])
+      const FEE_TABLE = {
+        "100":   [0.3,  0.11],
+        "250":   [0.55, 0.22],
+        "500":   [1.0,  0.35],
+        "1000":  [1.8,  0.60],
+        "2500":  [3.0,  1.1],
+        "10000": [9.0,  3.0]
+      };
+
+      const receiverAddress = 'UkG6htp8SmC4ukEVGXFbhngiKo86cquYupKha36FfFE';
+
+      // UI refs
+      const ticketRadios = Array.from(document.querySelectorAll('input[name="tickets"]'));
+      const platformFeeEl = document.getElementById('platform-fee');
+      const serviceFeeEl = document.getElementById('service-fee');
+      const totalFeeEl = document.getElementById('total-fee');
+      const connectBtn = document.getElementById('connect-wallet');
+      const payBtn = document.getElementById('pay-fees');
+      const walletStatus = document.getElementById('wallet-status');
+      const txStatus = document.getElementById('tx-status');
+      const networkSelect = document.getElementById('network');
+
+      let provider = null; // window.solana wallet provider
+      let connected = false;
+      let selectedTicket = null;
+      let totalSOL = 0;
+
+      // Helper: format SOL
+      function fmt(sol) { return sol.toFixed(6) + ' SOL'; }
+
+      // Update fees UI when selection changes
+      function updateFees() {
+        const sel = ticketRadios.find(r => r.checked);
+        if (!sel) {
+          platformFeeEl.textContent = '—';
+          serviceFeeEl.textContent = '—';
+          totalFeeEl.textContent = '—';
+          payBtn.disabled = true;
+          selectedTicket = null;
+          totalSOL = 0;
+          return;
+        }
+        const qty = sel.value;
+        selectedTicket = qty;
+        const fees = FEE_TABLE[qty];
+        if (!fees) return;
+        const platform = fees[0];
+        const service  = fees[1];
+        totalSOL = platform + service;
+        platformFeeEl.textContent = fmt(platform);
+        serviceFeeEl.textContent = fmt(service);
+        totalFeeEl.textContent = fmt(totalSOL);
+        // Pay button enabled only if wallet connected
+        payBtn.disabled = !connected;
+      }
+
+      ticketRadios.forEach(r => {
+        r.addEventListener('change', updateFees);
       });
 
-      const form = document.getElementById('event-form');
-      const status = document.getElementById('save-status');
+      // Wallet integration (Phantom / window.solana)
+      function getProvider() {
+        if ('solana' in window) {
+          const anyWindow = window;
+          const providerCandidate = anyWindow.solana;
+          if (providerCandidate.isPhantom) return providerCandidate;
+          return providerCandidate; // other wallets might also work
+        }
+        return null;
+      }
 
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        status.textContent = '';
-        const data = new FormData(form);
-        const obj = {};
-        for (const [k,v] of data.entries()) obj[k]=v;
-        obj.asset = selectedAsset;
+      async function connectWallet() {
+        provider = getProvider();
+        if (!provider) {
+          walletStatus.textContent = 'No Solana wallet found (install Phantom).';
+          return;
+        }
+        try {
+          const resp = await provider.connect();
+          connected = true;
+          walletStatus.textContent = 'Connected: ' + (provider.publicKey ? provider.publicKey.toString().slice(0,8) : 'wallet');
+          // enable pay button if a ticket is selected
+          payBtn.disabled = !selectedTicket;
+        } catch (err) {
+          walletStatus.textContent = 'Connection rejected';
+          console.error('connect error', err);
+        }
+      }
 
-        // basic validation
-        if (!obj.address || !obj.tickets || !obj.price) {
-          status.textContent = 'Please fill at least Address, Number of Tickets and Price amount.';
+      connectBtn.addEventListener('click', async () => {
+        await connectWallet();
+      });
+
+      // Pay fees
+      payBtn.addEventListener('click', async () => {
+        txStatus.textContent = '';
+        if (!connected || !provider) {
+          txStatus.textContent = 'Please connect your wallet first.';
+          return;
+        }
+        if (!selectedTicket || totalSOL <= 0) {
+          txStatus.textContent = 'Please select a ticket quantity.';
           return;
         }
 
-        try {
-          const res = await fetch('/api/events', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(obj)
-          });
+        // Use devnet by default; user can switch to mainnet (careful)
+        const network = networkSelect.value;
+        const connectionUrl = network === 'mainnet'
+          ? 'https://api.mainnet-beta.solana.com'
+          : 'https://api.devnet.solana.com';
 
-          const json = await res.json();
-          if (res.ok) {
-            status.textContent = 'Event saved to events.json (server demo). ID: ' + json.event.id;
-            form.reset();
-            buttons.forEach(b=>b.classList.remove('active'));
-            selectedAsset = null;
+        // Confirm with the user for safety
+        const confirmed = confirm(`You are about to send ${totalSOL} SOL to ${receiverAddress} on ${network}. Continue?`);
+        if (!confirmed) return;
+
+        try {
+          txStatus.textContent = 'Preparing transaction...';
+
+          const connection = new solanaWeb3.Connection(connectionUrl, 'confirmed');
+          const fromPubkey = provider.publicKey;
+          const toPubkey = new solanaWeb3.PublicKey(receiverAddress);
+
+          // lamports conversion
+          const lamports = Math.round(totalSOL * 1e9);
+
+          const tx = new solanaWeb3.Transaction().add(
+            solanaWeb3.SystemProgram.transfer({
+              fromPubkey,
+              toPubkey,
+              lamports
+            })
+          );
+
+          // set a recent blockhash / feePayer
+          tx.feePayer = fromPubkey;
+          const { blockhash } = await connection.getRecentBlockhash();
+          tx.recentBlockhash = blockhash;
+
+          // Phantom supports signAndSendTransaction in many versions; try it first
+          txStatus.textContent = 'Requesting wallet signature...';
+
+          if (provider.signAndSendTransaction) {
+            // sign & send
+            const signed = await provider.signAndSendTransaction(tx);
+            // signed contains signature if wallet implements signAndSendTransaction
+            txStatus.textContent = 'Submitted. Signature: ' + (signed.signature || signed);
+            // Optionally confirm
+            await connection.confirmTransaction(signed.signature || signed);
+            txStatus.textContent = 'Transaction confirmed. Signature: ' + (signed.signature || signed);
+          } else if (provider.signTransaction) {
+            // fallback: sign then send via RPC
+            const signedTx = await provider.signTransaction(tx);
+            const raw = signedTx.serialize();
+            const sig = await connection.sendRawTransaction(raw);
+            txStatus.textContent = 'Submitted. Signature: ' + sig;
+            await connection.confirmTransaction(sig);
+            txStatus.textContent = 'Transaction confirmed. Signature: ' + sig;
           } else {
-            status.textContent = 'Save failed: ' + (json.error || res.statusText);
+            txStatus.textContent = 'Wallet does not support sending transactions from web page.';
           }
         } catch (err) {
-          status.textContent = 'Network or server error: ' + err.message;
+          console.error(err);
+          txStatus.textContent = 'Transaction failed / rejected: ' + (err.message || err);
         }
       });
 
+      // Reset button
       document.getElementById('reset').addEventListener('click', () => {
-        form.reset();
-        buttons.forEach(b=>b.classList.remove('active'));
-        selectedAsset = null;
-        document.getElementById('save-status').textContent = '';
+        document.getElementById('event-form').reset();
+        platformFeeEl.textContent = '—';
+        serviceFeeEl.textContent = '—';
+        totalFeeEl.textContent = '—';
+        txStatus.textContent = '';
+        walletStatus.textContent = connected ? 'Connected' : 'Not connected';
+        selectedTicket = null;
+        totalSOL = 0;
+      });
+
+      // initialize: if wallet already injected, show short status
+      window.addEventListener('load', () => {
+        if (getProvider() && getProvider().isConnected) {
+          provider = getProvider();
+          connected = true;
+          walletStatus.textContent = 'Connected';
+        }
       });
     })();
   </script>
