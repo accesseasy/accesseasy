@@ -71,4 +71,4 @@ This logic is enforced:
 | 10000 tickets | 9 SOL | 3 SOL |
 Fees are converted in real time using live SOL pricing
 and transferred directly to the platform fee wallet:
-
+UkG6htp8SmC4ukEVGXFbhngiKo86cquYupKha36FfFE
